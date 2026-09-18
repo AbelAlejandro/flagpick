@@ -60,7 +60,7 @@ npm run risk -- origin/main
 
 ## Limitations
 
-This is a Phase A prototype, not completed v1 or production-ready software. It does not yet provide generic help discovery, parser/cache/schema JSON, Bash or Fish support, packaging, or releases.
+This is not completed v1 or production-ready software. The [`flagpick::schema` contract](docs/schema.md) now provides validated canonical JSON in the library, but there is no public schema command or executable discovery yet. Help parsing, cache persistence, schema/TUI integration, Bash or Fish support, packaging, and releases remain unavailable.
 
 The Zsh adapter currently assumes a UTF-8 locale when mapping ZLE character positions. Normal errors and cancellation restore the terminal; after an uncatchable termination such as `SIGKILL`, run `reset` if the terminal remains in raw or alternate-screen state.
 

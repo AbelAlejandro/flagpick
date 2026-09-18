@@ -1,0 +1,171 @@
+{
+  "schema_version": 1,
+  "root": {
+    "executable": {
+      "name": "git",
+      "path": "/usr/bin/git"
+    },
+    "name": "git",
+    "description": "Distributed version control",
+    "usage": [
+      "git [OPTIONS] <COMMAND>"
+    ],
+    "subcommands": [
+      {
+        "name": "commit",
+        "aliases": [
+          "ci"
+        ],
+        "command": {
+          "executable": {
+            "name": "git"
+          },
+          "name": "commit",
+          "description": "Record changes",
+          "options": [
+            {
+              "id": "message",
+              "names": [
+                {
+                  "kind": "short",
+                  "value": "m"
+                },
+                {
+                  "kind": "long",
+                  "value": "message"
+                }
+              ],
+              "description": "Use the given commit message",
+              "value": {
+                "arity": "optional",
+                "name": "MESSAGE",
+                "value_type": "string"
+              },
+              "repeatability": "single",
+              "required": false,
+              "scope": "local",
+              "hidden": false,
+              "insertion_policy": "append"
+            }
+          ],
+          "positionals": [
+            {
+              "name": "path",
+              "description": "Paths to record",
+              "arity": "multiple",
+              "value_type": "path",
+              "required": false
+            }
+          ],
+          "metadata": {
+            "source": "built_in",
+            "confidence": "unknown"
+          }
+        }
+      }
+    ],
+    "options": [
+      {
+        "id": "verbose",
+        "names": [
+          {
+            "kind": "long",
+            "value": "verbose"
+          },
+          {
+            "kind": "short",
+            "value": "v"
+          }
+        ],
+        "description": "Increase verbosity",
+        "value": {
+          "arity": "none",
+          "value_type": "bool"
+        },
+        "repeatability": "repeatable",
+        "required": false,
+        "scope": "global",
+        "hidden": false,
+        "insertion_policy": "before_positionals",
+        "source_span": {
+          "start": 10,
+          "end": 22
+        }
+      },
+      {
+        "id": "color",
+        "names": [
+          {
+            "kind": "long",
+            "value": "color"
+          }
+        ],
+        "value": {
+          "arity": "required",
+          "name": "WHEN",
+          "value_type": "enum",
+          "possible_values": [
+            "always",
+            "auto",
+            "never"
+          ]
+        },
+        "repeatability": "single",
+        "required": true,
+        "scope": "local",
+        "hidden": false,
+        "insertion_policy": "append"
+      },
+      {
+        "id": "no-color",
+        "names": [
+          {
+            "kind": "long",
+            "value": "no-color"
+          }
+        ],
+        "value": {
+          "arity": "none",
+          "value_type": "bool"
+        },
+        "repeatability": "single",
+        "required": false,
+        "scope": "local",
+        "hidden": false,
+        "negates": "color",
+        "insertion_policy": "append"
+      },
+      {
+        "id": "version",
+        "names": [
+          {
+            "kind": "single_dash_long",
+            "value": "version"
+          }
+        ],
+        "value": {
+          "arity": "unknown",
+          "value_type": "unknown"
+        },
+        "repeatability": "unknown",
+        "required": false,
+        "scope": "unknown",
+        "hidden": false,
+        "insertion_policy": "unknown"
+      }
+    ],
+    "metadata": {
+      "source": "built_in",
+      "parser": "fixture",
+      "confidence": "high",
+      "executable_version": "2.0",
+      "fingerprint": "fixture-v1",
+      "extensions": {
+        "a_first": {
+          "future": true
+        },
+        "z_last": "preserved"
+      }
+    }
+  }
+}
