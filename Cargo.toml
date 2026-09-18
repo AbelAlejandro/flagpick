@@ -1,0 +1,13 @@
+[package]
+name = "flagpick"
+version = "0.1.0"
+edition = "2024"
+description = "Interactive --help for every CLI"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/AbelAlejandro/flagpick"
+rust-version = "1.85"
+
+[dependencies]
+crossterm = "0.28.1"
+ratatui = "0.29"
+rustix = "1.1"
