@@ -1,0 +1,11 @@
+{
+  "name": "flagpick-factory-controls",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "diff": "node scripts/factory-check.mjs diff",
+    "risk": "node scripts/factory-check.mjs risk",
+    "secrets": "node scripts/factory-check.mjs secrets",
+    "evidence": "node scripts/factory-check.mjs evidence"
+  }
+}
