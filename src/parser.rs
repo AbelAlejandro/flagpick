@@ -267,13 +267,13 @@ fn parse_name(token: &str) -> Option<(OptionName, String)> {
     if value.is_empty() {
         return None;
     }
-    if value.chars().count() == 1 {
-        let character = value.chars().next()?;
-        return Some((OptionName::Short(character), format!("-{character}")));
-    }
     let name = value
         .split_once(['=', '[', '<'])
         .map_or(value, |(name, _)| name);
+    if name.chars().count() == 1 {
+        let character = name.chars().next()?;
+        return Some((OptionName::Short(character), format!("-{character}")));
+    }
     Some((
         OptionName::SingleDashLong(name.to_owned()),
         format!("-{name}"),
