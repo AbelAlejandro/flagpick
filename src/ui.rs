@@ -15,6 +15,26 @@ use std::io;
 use std::thread;
 use std::time::Duration;
 
+const MAX_TERMINAL_DISPLAY_LENGTH: usize = 4096;
+
+fn consume_csi(characters: &mut std::iter::Peekable<std::str::Chars<'_>>) {
+    while let Some(character) = characters.next() {
+        if ('@'..='~').contains(&character) {
+            break;
+        }
+    }
+}
+
+fn consume_string(characters: &mut std::iter::Peekable<std::str::Chars<'_>>) {
+    while let Some(character) = characters.next() {
+        match character {
+            '\x07' | '\x9c' => break,
+            '\x1b' if characters.next_if_eq(&'\\').is_some() => break,
+            _ => {}
+        }
+    }
+}
+
 pub fn run_picker(
     buffer: &ShellBuffer,
     insertion_point: InsertionPoint,
@@ -217,13 +237,53 @@ impl TerminalSession {
 }
 
 fn sanitize_for_terminal(text: &str) -> String {
-    text.chars()
-        .map(|character| match character {
-            '\n' | '\t' => character,
-            _ if character.is_control() => '�',
-            _ => character,
-        })
-        .collect()
+    let mut sanitized = String::new();
+    let mut characters = text.chars().peekable();
+    let mut display_length = 0;
+
+    while let Some(character) = characters.next() {
+        if display_length == MAX_TERMINAL_DISPLAY_LENGTH {
+            break;
+        }
+
+        match character {
+            '\x1b' => match characters.next_if_eq(&'[') {
+                Some(_) => consume_csi(&mut characters),
+                None => match characters.next_if_eq(&']') {
+                    Some(_) => consume_string(&mut characters),
+                    None => match characters.next_if_eq(&'P') {
+                        Some(_) => consume_string(&mut characters),
+                        None => match characters.next_if_eq(&'_') {
+                            Some(_) => consume_string(&mut characters),
+                            None => match characters.next_if_eq(&'^') {
+                                Some(_) => consume_string(&mut characters),
+                                None => {
+                                    sanitized.push('�');
+                                    display_length += 1;
+                                }
+                            },
+                        },
+                    },
+                },
+            },
+            '\x9b' => consume_csi(&mut characters),
+            '\x90' | '\x9d' | '\x9e' | '\x9f' => consume_string(&mut characters),
+            '\n' | '\t' => {
+                sanitized.push(character);
+                display_length += 1;
+            }
+            _ if character.is_control() => {
+                sanitized.push('�');
+                display_length += 1;
+            }
+            _ => {
+                sanitized.push(character);
+                display_length += 1;
+            }
+        }
+    }
+
+    sanitized
 }
 
 impl Drop for TerminalSession {
@@ -260,7 +320,44 @@ mod tests {
     fn neutralizes_terminal_controls_in_the_preview_only() {
         assert_eq!(
             sanitize_for_terminal("safe\n\x1b]52;clipboard\x07\tend"),
-            "safe\n�]52;clipboard�\tend"
+            "safe\n\tend"
+        );
+    }
+
+    #[test]
+    fn strips_ansi_sequences_including_unterminated_sequences() {
+        assert_eq!(
+            sanitize_for_terminal(
+                "\x1b[31mred\x1b]52;clipboard\x07\x1bPsecret\x1b\\\
+\x1b_hidden\x1b\\\x1b^private\x1b\\\x1b]unterminated\x9bred"
+            ),
+            "red"
+        );
+    }
+
+    #[test]
+    fn strips_c1_string_controls_and_preserves_lone_escape_safely() {
+        assert_eq!(
+            sanitize_for_terminal("\x90dcs\x9c\x9doscbell\x07\x9epm\x1b\\\x9fapc\x9c"),
+            ""
+        );
+        assert_eq!(sanitize_for_terminal("before\x1bafter"), "before�after");
+    }
+
+    #[test]
+    fn replaces_malformed_utf8_lossy_input() {
+        let text = String::from_utf8_lossy(b"safe\xff\xfe").into_owned();
+
+        assert_eq!(sanitize_for_terminal(&text), "safe��");
+    }
+
+    #[test]
+    fn caps_the_display_length() {
+        let text = "x".repeat(MAX_TERMINAL_DISPLAY_LENGTH + 10);
+
+        assert_eq!(
+            sanitize_for_terminal(&text),
+            "x".repeat(MAX_TERMINAL_DISPLAY_LENGTH)
         );
     }
 }
