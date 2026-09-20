@@ -45,7 +45,7 @@ impl GenericHelpParser {
         }
 
         let mut warnings = Vec::new();
-        let mut options = Vec::new();
+        let mut options: Vec<OptionSpec> = Vec::new();
         let mut names = HashMap::<String, OptionId>::new();
         let mut in_section = false;
         let mut last_option = None;
