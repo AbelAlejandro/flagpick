@@ -267,9 +267,7 @@ fn sanitize_for_terminal(text: &str) -> String {
                 },
             },
             '\u{9b}' => consume_csi(&mut characters),
-            '\u{90}' | '\u{9d}' | '\u{9e}' | '\u{9f}' => {
-                consume_string(&mut characters)
-            }
+            '\u{90}' | '\u{9d}' | '\u{9e}' | '\u{9f}' => consume_string(&mut characters),
             '\n' | '\t' => {
                 sanitized.push(character);
                 display_length += 1;
@@ -350,9 +348,7 @@ mod tests {
     #[test]
     fn strips_c1_string_controls_and_preserves_lone_escape_safely() {
         assert_eq!(
-            sanitize_for_terminal(
-                "\u{90}dcs\u{9c}\u{9d}oscbell\x07\u{9e}pm\x1b\\\u{9f}apc\u{9c}"
-            ),
+            sanitize_for_terminal("\u{90}dcs\u{9c}\u{9d}oscbell\x07\u{9e}pm\x1b\\\u{9f}apc\u{9c}"),
             ""
         );
         assert_eq!(sanitize_for_terminal("before\x1bafter"), "before�after");
