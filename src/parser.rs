@@ -364,7 +364,10 @@ mod tests {
             report.document.root.options[2].value.arity,
             ValueArity::Optional
         );
-        assert_eq!(report.document.root.options[2].value.value_type, ValueType::Enum);
+        assert_eq!(
+            report.document.root.options[2].value.value_type,
+            ValueType::Enum
+        );
         assert_eq!(
             report.document.root.options[2].value.possible_values,
             vec!["auto", "always", "never"]
