@@ -1,4 +1,5 @@
 pub mod buffer;
+pub mod parser;
 pub mod picker;
 pub mod probe;
 pub mod schema;

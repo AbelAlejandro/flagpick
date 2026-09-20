@@ -1,0 +1,18 @@
+Usage: demo [OPTIONS] INPUT
+
+Options:
+  -v, --verbose              enable verbose output
+  --output <FILE>            write output to FILE
+  --color[=<WHEN>]           colorize output
+                             possible values: auto, always, never
+  -I<DIR>                    add DIR to the search path
+  -version                   print the version
+  --repeat                   repeatable; may be specified multiple times
+  --no-color                 disable color
+
+Arguments:
+  INPUT                      input path
+
+This prose mentions --fabricated but is not an option declaration.
+  --broken ??? ambiguous declaration
+  -                         malformed declaration
