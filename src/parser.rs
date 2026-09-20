@@ -48,7 +48,7 @@ impl GenericHelpParser {
         let mut options: Vec<OptionSpec> = Vec::new();
         let mut names = HashMap::<String, OptionId>::new();
         let mut in_section = false;
-        let mut last_option = None;
+        let mut last_option: Option<usize> = None;
         let mut usage = Vec::new();
         let mut positionals = Vec::new();
 
@@ -176,7 +176,7 @@ impl GenericHelpParser {
             options.push(option);
         }
 
-        let mut negations = HashMap::new();
+        let mut negations = BTreeMap::new();
         for option in &options {
             for name in &option.names {
                 if let OptionName::Long(value) = name {
