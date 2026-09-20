@@ -18,7 +18,7 @@ use std::time::Duration;
 const MAX_TERMINAL_DISPLAY_LENGTH: usize = 4096;
 
 fn consume_csi(characters: &mut std::iter::Peekable<std::str::Chars<'_>>) {
-    while let Some(character) = characters.next() {
+    for character in characters.by_ref() {
         if ('@'..='~').contains(&character) {
             break;
         }
@@ -296,7 +296,9 @@ impl Drop for TerminalSession {
 
 #[cfg(test)]
 mod tests {
-    use super::{InputKey, decode_key, sanitize_for_terminal, utf8_width};
+    use super::{
+        InputKey, MAX_TERMINAL_DISPLAY_LENGTH, decode_key, sanitize_for_terminal, utf8_width,
+    };
 
     #[test]
     fn decodes_navigation_confirmation_and_cancellation() {
