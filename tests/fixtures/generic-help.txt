@@ -16,3 +16,7 @@ Arguments:
 This prose mentions --fabricated but is not an option declaration.
   --broken ??? ambiguous declaration
   -                         malformed declaration
+
+Examples:
+  demo -v input.txt
+  demo --fabricated input.txt

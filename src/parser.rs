@@ -85,7 +85,7 @@ impl GenericHelpParser {
                 continue;
             }
 
-            let eligible = in_section || trimmed.starts_with('-');
+            let eligible = in_section || (options.is_empty() && trimmed.starts_with('-'));
             if !eligible || !trimmed.starts_with('-') {
                 if in_section && !trimmed.is_empty() {
                     warnings.push(ParseWarning {
@@ -111,6 +111,16 @@ impl GenericHelpParser {
                 });
                 continue;
             }
+            if parsed
+                .iter()
+                .any(|(_, spelling)| names.contains_key(spelling))
+            {
+                warnings.push(ParseWarning {
+                    line: line_number,
+                    message: "duplicate option spelling skipped".into(),
+                });
+                continue;
+            }
 
             let arity = tokens
                 .iter()
@@ -120,7 +130,10 @@ impl GenericHelpParser {
                 .as_deref()
                 .map(|text| {
                     let text = text.to_ascii_lowercase();
-                    text.contains("repeatable") || text.contains("multiple times")
+                    !["not", "no", "never"]
+                        .iter()
+                        .any(|word| text.split_whitespace().any(|part| part == *word))
+                        && (text.contains("repeatable") || text.contains("multiple times"))
                 })
                 .unwrap_or(false)
             {
