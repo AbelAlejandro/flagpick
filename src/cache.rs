@@ -5,7 +5,7 @@ use std::error::Error;
 use std::fmt;
 use std::fs;
 use std::hash::{Hash, Hasher};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 pub const CACHE_VERSION: u16 = 1;
 pub const MAX_CACHE_BYTES: usize = 16 * 1024 * 1024;
