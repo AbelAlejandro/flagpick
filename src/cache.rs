@@ -1,12 +1,12 @@
 use crate::schema::{SCHEMA_VERSION, SchemaDocument};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::error::Error;
 use std::fmt;
 use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
-use sha2::{Digest, Sha256};
 
 pub const CACHE_VERSION: u16 = 1;
 pub const MAX_CACHE_BYTES: usize = 16 * 1024 * 1024;
@@ -83,7 +83,9 @@ impl fmt::Display for CacheError {
             Self::Json(error) => write!(formatter, "cache JSON error: {error}"),
             Self::InvalidDocument => formatter.write_str("cache document failed schema validation"),
             Self::RecordTooLarge => formatter.write_str("cache record exceeds the safety limit"),
-            Self::InvalidExecutablePath => formatter.write_str("cache executable path must be absolute"),
+            Self::InvalidExecutablePath => {
+                formatter.write_str("cache executable path must be absolute")
+            }
         }
     }
 }
@@ -149,9 +151,7 @@ impl SchemaCache {
                 return Ok(None);
             }
         };
-        if record.cache_version != CACHE_VERSION
-            || record.document.validate().is_err()
-        {
+        if record.cache_version != CACHE_VERSION || record.document.validate().is_err() {
             let _ = fs::remove_file(path);
             return Ok(None);
         }
@@ -175,7 +175,10 @@ impl SchemaCache {
         let path = self.path_for(key);
         let counter = TEMP_COUNTER.fetch_add(1, Ordering::Relaxed);
         let temporary = self.root.join(format!(".{CACHE_FILE_PREFIX}{counter}.tmp"));
-        let mut file = OpenOptions::new().write(true).create_new(true).open(&temporary)?;
+        let mut file = OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&temporary)?;
         file.write_all(&bytes)?;
         file.sync_all()?;
         drop(file);
@@ -203,7 +206,9 @@ impl SchemaCache {
         let directory = match fs::read_dir(&self.root) {
             Ok(directory) => directory,
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(entries),
-            Err(error) if error.kind() == std::io::ErrorKind::PermissionDenied => return Ok(entries),
+            Err(error) if error.kind() == std::io::ErrorKind::PermissionDenied => {
+                return Ok(entries);
+            }
             Err(error) => return Err(error.into()),
         };
         for entry in directory {
@@ -217,7 +222,10 @@ impl SchemaCache {
                 Err(error) => return Err(error.into()),
             };
             match serde_json::from_slice::<CacheRecord>(&bytes) {
-                Ok(record) if record.cache_version == CACHE_VERSION && record.document.validate().is_ok() => {
+                Ok(record)
+                    if record.cache_version == CACHE_VERSION
+                        && record.document.validate().is_ok() =>
+                {
                     entries.push(record.key)
                 }
                 _ => {
@@ -232,18 +240,29 @@ impl SchemaCache {
     fn path_for(&self, key: &CacheKey) -> PathBuf {
         let bytes = serde_json::to_vec(key).expect("CacheKey serialization cannot fail");
         let digest = Sha256::digest(bytes);
-        self.root.join(format!("{CACHE_FILE_PREFIX}{}.json", hex_digest(digest)))
+        self.root
+            .join(format!("{CACHE_FILE_PREFIX}{}.json", hex_digest(digest)))
     }
 }
 
 fn hex_digest(bytes: impl AsRef<[u8]>) -> String {
-    bytes.as_ref().iter().map(|byte| format!("{byte:02x}")).collect()
+    bytes
+        .as_ref()
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect()
 }
 
 fn is_cache_file(path: &Path) -> bool {
-    let Some(name) = path.file_name().and_then(|name| name.to_str()) else { return false };
-    let digest = name.strip_prefix(CACHE_FILE_PREFIX).and_then(|name| name.strip_suffix(".json"));
-    digest.is_some_and(|digest| digest.len() == 64 && digest.bytes().all(|byte| byte.is_ascii_hexdigit()))
+    let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
+        return false;
+    };
+    let digest = name
+        .strip_prefix(CACHE_FILE_PREFIX)
+        .and_then(|name| name.strip_suffix(".json"));
+    digest.is_some_and(|digest| {
+        digest.len() == 64 && digest.bytes().all(|byte| byte.is_ascii_hexdigit())
+    })
 }
 
 fn is_temp_file(path: &Path) -> bool {
@@ -266,26 +285,29 @@ mod tests {
     use std::collections::BTreeMap;
 
     fn document() -> SchemaDocument {
-        SchemaDocument::from_json(include_str!("../tests/fixtures/git-schema-v1.json")).unwrap_or_else(|_| SchemaDocument::new(CommandSpec {
-            executable: ExecutableIdentity {
-                name: "demo".into(),
-                path: Some("/tmp/demo".into()),
-            },
-            name: "demo".into(),
-            description: None,
-            usage: vec![],
-            subcommands: vec![],
-            options: vec![],
-            positionals: vec![],
-            metadata: SpecMetadata {
-                source: HelpSource::GenericHelp,
-                parser: Some("test".into()),
-                confidence: Confidence::Medium,
-                executable_version: None,
-                fingerprint: Some("fingerprint".into()),
-                extensions: BTreeMap::new(),
-            },
-        }))
+        SchemaDocument::from_json(include_str!("../tests/fixtures/git-schema-v1.json"))
+            .unwrap_or_else(|_| {
+                SchemaDocument::new(CommandSpec {
+                    executable: ExecutableIdentity {
+                        name: "demo".into(),
+                        path: Some("/tmp/demo".into()),
+                    },
+                    name: "demo".into(),
+                    description: None,
+                    usage: vec![],
+                    subcommands: vec![],
+                    options: vec![],
+                    positionals: vec![],
+                    metadata: SpecMetadata {
+                        source: HelpSource::GenericHelp,
+                        parser: Some("test".into()),
+                        confidence: Confidence::Medium,
+                        executable_version: None,
+                        fingerprint: Some("fingerprint".into()),
+                        extensions: BTreeMap::new(),
+                    },
+                })
+            })
     }
 
     fn cache() -> (SchemaCache, PathBuf) {
@@ -318,8 +340,8 @@ mod tests {
         let executable = root.join("demo");
         fs::create_dir_all(&root).unwrap();
         fs::write(&executable, b"one").unwrap();
-        let first = CacheKey::from_executable(&executable, vec!["demo".into()], "generic-v1")
-            .unwrap();
+        let first =
+            CacheKey::from_executable(&executable, vec!["demo".into()], "generic-v1").unwrap();
         cache.put(&first, &document()).unwrap();
         fs::write(&executable, b"two").unwrap();
         let changed =
@@ -335,7 +357,8 @@ mod tests {
         let key = CacheKey::new("/tmp/demo", "one", vec!["demo".into()], "generic-v1");
         cache.put(&key, &document()).unwrap();
         let path = cache.path_for(&key);
-        let mut value: serde_json::Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+        let mut value: serde_json::Value =
+            serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
         value["cache_version"] = serde_json::json!(CACHE_VERSION + 1);
         fs::write(&path, serde_json::to_vec(&value).unwrap()).unwrap();
         assert_eq!(cache.get(&key).unwrap(), None);
