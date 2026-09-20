@@ -1,5 +1,6 @@
 pub mod buffer;
 pub mod picker;
+pub mod probe;
 pub mod schema;
 
 use std::error::Error;
