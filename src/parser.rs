@@ -204,7 +204,7 @@ impl GenericHelpParser {
                 negates: None,
                 conflicts_with: Vec::new(),
                 requires: Vec::new(),
-                insertion_policy: InsertionPolicy::Append,
+                insertion_policy: InsertionPolicy::Unknown,
                 source_span: None,
             };
             for name in &option.names {
@@ -403,8 +403,16 @@ mod tests {
             ValueArity::Required
         );
         assert_eq!(
+            report.document.root.options[1].value.name.as_deref(),
+            Some("FILE")
+        );
+        assert_eq!(
             report.document.root.options[2].value.arity,
             ValueArity::Optional
+        );
+        assert_eq!(
+            report.document.root.options[2].value.name.as_deref(),
+            Some("WHEN")
         );
         assert_eq!(
             report.document.root.options[2].value.value_type,
@@ -443,6 +451,7 @@ mod tests {
             .unwrap();
         assert_eq!(include.value.name.as_deref(), Some("DIR"));
         assert_eq!(include.value.arity, ValueArity::Required);
+        assert_eq!(include.insertion_policy, InsertionPolicy::Unknown);
         let repeat = report
             .document
             .root
