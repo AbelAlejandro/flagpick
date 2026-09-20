@@ -60,7 +60,7 @@ npm run risk -- origin/main
 
 ## Limitations
 
-This is not completed v1 or production-ready software. The [`flagpick::schema` contract](docs/schema.md) and opt-in [`flagpick::probe` runner](docs/probing.md) now exist as library foundations, but there is no public discovery or schema command yet. Docker and Git therefore still show the hardcoded prototype options. Help parsing, cache persistence, schema/TUI integration, Bash or Fish support, packaging, and releases remain unavailable.
+This is not completed v1 or production-ready software. The [`flagpick::schema` contract](docs/schema.md), opt-in [`flagpick::probe` runner](docs/probing.md), generic help parser, and bounded schema cache now exist as library foundations, but there is no public discovery or schema command yet. Docker and Git therefore still show the hardcoded prototype options. Discovery wiring, schema/TUI integration, Bash or Fish support, packaging, and releases remain unavailable.
 
 The Zsh adapter currently assumes a UTF-8 locale when mapping ZLE character positions. Normal errors and cancellation restore the terminal; after an uncatchable termination such as `SIGKILL`, run `reset` if the terminal remains in raw or alternate-screen state.
 
