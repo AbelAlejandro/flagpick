@@ -58,11 +58,15 @@ impl fmt::Display for CacheError {
 impl Error for CacheError {}
 
 impl From<std::io::Error> for CacheError {
-    fn from(error: std::io::Error) -> Self { Self::Io(error) }
+    fn from(error: std::io::Error) -> Self {
+        Self::Io(error)
+    }
 }
 
 impl From<serde_json::Error> for CacheError {
-    fn from(error: serde_json::Error) -> Self { Self::Json(error) }
+    fn from(error: serde_json::Error) -> Self {
+        Self::Json(error)
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -80,7 +84,10 @@ pub struct SchemaCache {
 
 impl SchemaCache {
     pub fn new(root: impl Into<PathBuf>) -> Self {
-        Self { root: root.into(), max_bytes: MAX_CACHE_BYTES }
+        Self {
+            root: root.into(),
+            max_bytes: MAX_CACHE_BYTES,
+        }
     }
 
     pub fn default_location() -> Option<PathBuf> {
@@ -108,7 +115,10 @@ impl SchemaCache {
                 return Ok(None);
             }
         };
-        if record.cache_version != CACHE_VERSION || record.key != *key || record.document.validate().is_err() {
+        if record.cache_version != CACHE_VERSION
+            || record.key != *key
+            || record.document.validate().is_err()
+        {
             let _ = fs::remove_file(path);
             return Ok(None);
         }
@@ -116,8 +126,14 @@ impl SchemaCache {
     }
 
     pub fn put(&self, key: &CacheKey, document: &SchemaDocument) -> Result<(), CacheError> {
-        document.validate().map_err(|_| CacheError::InvalidDocument)?;
-        let record = CacheRecord { cache_version: CACHE_VERSION, key: key.clone(), document: document.clone() };
+        document
+            .validate()
+            .map_err(|_| CacheError::InvalidDocument)?;
+        let record = CacheRecord {
+            cache_version: CACHE_VERSION,
+            key: key.clone(),
+            document: document.clone(),
+        };
         let bytes = serde_json::to_vec_pretty(&record)?;
         if bytes.len() > self.max_bytes {
             return Err(CacheError::RecordTooLarge);
@@ -147,7 +163,10 @@ impl SchemaCache {
         };
         for entry in directory {
             let path = entry?.path();
-            if path.extension().is_some_and(|extension| extension == "json") {
+            if path
+                .extension()
+                .is_some_and(|extension| extension == "json")
+            {
                 entries.push(path);
             }
         }
@@ -165,16 +184,28 @@ impl SchemaCache {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::schema::{Confidence, ExecutableIdentity, HelpSource, SpecMetadata, CommandSpec};
+    use crate::schema::{CommandSpec, Confidence, ExecutableIdentity, HelpSource, SpecMetadata};
     use std::collections::BTreeMap;
 
     fn document() -> SchemaDocument {
         SchemaDocument::new(CommandSpec {
-            executable: ExecutableIdentity { name: "demo".into(), path: Some("/tmp/demo".into()) },
-            name: "demo".into(), description: None, usage: vec![], subcommands: vec![],
-            options: vec![], positionals: vec![], metadata: SpecMetadata {
-                source: HelpSource::GenericHelp, parser: Some("test".into()), confidence: Confidence::Medium,
-                executable_version: None, fingerprint: Some("fingerprint".into()), extensions: BTreeMap::new(),
+            executable: ExecutableIdentity {
+                name: "demo".into(),
+                path: Some("/tmp/demo".into()),
+            },
+            name: "demo".into(),
+            description: None,
+            usage: vec![],
+            subcommands: vec![],
+            options: vec![],
+            positionals: vec![],
+            metadata: SpecMetadata {
+                source: HelpSource::GenericHelp,
+                parser: Some("test".into()),
+                confidence: Confidence::Medium,
+                executable_version: None,
+                fingerprint: Some("fingerprint".into()),
+                extensions: BTreeMap::new(),
             },
         })
     }
