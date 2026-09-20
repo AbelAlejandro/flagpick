@@ -26,7 +26,30 @@ pub struct ParseReport {
     pub warnings: Vec<ParseWarning>,
 }
 
+pub trait HelpParser {
+    fn id(&self) -> &'static str;
+    fn parse(
+        &self,
+        executable: impl Into<String>,
+        help: &str,
+    ) -> Result<ParseReport, GenericHelpError>;
+}
+
 pub struct GenericHelpParser;
+
+impl HelpParser for GenericHelpParser {
+    fn id(&self) -> &'static str {
+        "generic-gnu-help"
+    }
+
+    fn parse(
+        &self,
+        executable: impl Into<String>,
+        help: &str,
+    ) -> Result<ParseReport, GenericHelpError> {
+        GenericHelpParser::parse(executable, help)
+    }
+}
 
 impl GenericHelpParser {
     pub fn parse(
@@ -108,6 +131,17 @@ impl GenericHelpParser {
                 });
                 continue;
             };
+            if tokens.iter().any(|token| {
+                !token.starts_with('-')
+                    && !token.starts_with(['<', '['])
+                    && !token.ends_with("...")
+            }) {
+                warnings.push(ParseWarning {
+                    line: line_number,
+                    message: "ambiguous option value tokens skipped".into(),
+                });
+                continue;
+            }
             let parsed: Vec<_> = tokens
                 .iter()
                 .filter_map(|token| parse_name(token))
@@ -141,6 +175,7 @@ impl GenericHelpParser {
                     !["not", "no", "never"]
                         .iter()
                         .any(|word| text.split_whitespace().any(|part| part == *word))
+                        && !text.contains("non-repeatable")
                         && (text.contains("repeatable") || text.contains("multiple times"))
                 })
                 .unwrap_or(false)
@@ -197,7 +232,7 @@ impl GenericHelpParser {
             }
         }
 
-        let document = SchemaDocument {
+        let mut document = SchemaDocument {
             schema_version: crate::schema::SCHEMA_VERSION,
             root: CommandSpec {
                 executable: ExecutableIdentity {
@@ -220,6 +255,9 @@ impl GenericHelpParser {
                 },
             },
         };
+        if !warnings.is_empty() {
+            document.root.metadata.confidence = Confidence::Low;
+        }
         Ok(ParseReport { document, warnings })
     }
 }
@@ -304,7 +342,7 @@ fn value_name(tokens: &[String]) -> Option<String> {
         } else {
             token.split_once(['=', '[', '<'])?.1
         };
-        let value = value.trim_end_matches(']').trim_end_matches('>');
+        let value = value.trim_matches(['=', '[', ']', '<', '>']);
         (!value.is_empty()).then(|| value.to_owned())
     })
 }
@@ -379,6 +417,46 @@ mod tests {
             vec!["auto", "always", "never"]
         );
         assert_eq!(report.document.root.positionals.len(), 1);
+        let verbose = report
+            .document
+            .root
+            .options
+            .iter()
+            .find(|option| option.id.as_str() == "-v")
+            .unwrap();
+        assert!(verbose
+            .names
+            .iter()
+            .any(|name| matches!(name, OptionName::Short('v'))));
+        assert!(verbose
+            .names
+            .iter()
+            .any(|name| matches!(name, OptionName::Long(value) if value == "verbose")));
+        let include = report
+            .document
+            .root
+            .options
+            .iter()
+            .find(|option| option.id.as_str() == "-I")
+            .unwrap();
+        assert_eq!(include.value.name.as_deref(), Some("DIR"));
+        assert_eq!(include.value.arity, ValueArity::Required);
+        let repeat = report
+            .document
+            .root
+            .options
+            .iter()
+            .find(|option| option.id.as_str() == "--repeat")
+            .unwrap();
+        assert_eq!(repeat.repeatability, Repeatability::Repeatable);
+        let no_color = report
+            .document
+            .root
+            .options
+            .iter()
+            .find(|option| option.id.as_str() == "--no-color")
+            .unwrap();
+        assert_eq!(no_color.negates.as_ref().map(OptionId::as_str), Some("--color"));
         assert!(report.document.root.options.iter().any(|option| {
             option
                 .names
@@ -391,7 +469,13 @@ mod tests {
                 .iter()
                 .any(|name| name.spelling() == "--fabricated")
         }));
-        assert!(!report.warnings.is_empty());
+        assert!(report
+            .warnings
+            .iter()
+            .any(|warning| warning.message.contains("ambiguous option value")));
+        assert_eq!(report.document.root.metadata.confidence, Confidence::Low);
+        let json = report.document.to_canonical_json().unwrap();
+        assert_eq!(SchemaDocument::from_json(&json).unwrap(), report.document);
     }
 
     #[test]

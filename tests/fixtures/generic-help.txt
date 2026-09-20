@@ -9,12 +9,12 @@ Options:
   -version                   print the version
   --repeat                   repeatable; may be specified multiple times
   --no-color                 disable color
+  --broken ???                malformed declaration
 
 Arguments:
   INPUT                      input path
 
 This prose mentions --fabricated but is not an option declaration.
-  --broken ??? ambiguous declaration
   -                         malformed declaration
 
 Examples:
