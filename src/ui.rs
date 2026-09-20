@@ -336,6 +336,16 @@ mod tests {
     }
 
     #[test]
+    fn strips_seven_bit_string_controls_with_bel_and_string_terminators() {
+        assert_eq!(
+            sanitize_for_terminal(
+                "left\x1bP dcs\x1b\\\x1b]osc\x07\x1b]osc-st\x1b\\\x1b^pm\x1b\\\x1b_apc\x1b\\right"
+            ),
+            "leftright"
+        );
+    }
+
+    #[test]
     fn strips_c1_string_controls_and_preserves_lone_escape_safely() {
         assert_eq!(
             sanitize_for_terminal("\x90dcs\x9c\x9doscbell\x07\x9epm\x1b\\\x9fapc\x9c"),
