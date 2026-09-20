@@ -132,9 +132,7 @@ impl GenericHelpParser {
                 continue;
             };
             if tokens.iter().any(|token| {
-                !token.starts_with('-')
-                    && !token.starts_with(['<', '['])
-                    && !token.ends_with("...")
+                !token.starts_with('-') && !token.starts_with(['<', '[']) && !token.ends_with("...")
             }) {
                 warnings.push(ParseWarning {
                     line: line_number,
@@ -424,14 +422,18 @@ mod tests {
             .iter()
             .find(|option| option.id.as_str() == "-v")
             .unwrap();
-        assert!(verbose
-            .names
-            .iter()
-            .any(|name| matches!(name, OptionName::Short('v'))));
-        assert!(verbose
-            .names
-            .iter()
-            .any(|name| matches!(name, OptionName::Long(value) if value == "verbose")));
+        assert!(
+            verbose
+                .names
+                .iter()
+                .any(|name| matches!(name, OptionName::Short('v')))
+        );
+        assert!(
+            verbose
+                .names
+                .iter()
+                .any(|name| matches!(name, OptionName::Long(value) if value == "verbose"))
+        );
         let include = report
             .document
             .root
@@ -456,7 +458,10 @@ mod tests {
             .iter()
             .find(|option| option.id.as_str() == "--no-color")
             .unwrap();
-        assert_eq!(no_color.negates.as_ref().map(OptionId::as_str), Some("--color"));
+        assert_eq!(
+            no_color.negates.as_ref().map(OptionId::as_str),
+            Some("--color")
+        );
         assert!(report.document.root.options.iter().any(|option| {
             option
                 .names
@@ -469,10 +474,12 @@ mod tests {
                 .iter()
                 .any(|name| name.spelling() == "--fabricated")
         }));
-        assert!(report
-            .warnings
-            .iter()
-            .any(|warning| warning.message.contains("ambiguous option value")));
+        assert!(
+            report
+                .warnings
+                .iter()
+                .any(|warning| warning.message.contains("ambiguous option value"))
+        );
         assert_eq!(report.document.root.metadata.confidence, Confidence::Low);
         let json = report.document.to_canonical_json().unwrap();
         assert_eq!(SchemaDocument::from_json(&json).unwrap(), report.document);
