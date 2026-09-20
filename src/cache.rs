@@ -211,7 +211,14 @@ mod tests {
     }
 
     fn cache() -> (SchemaCache, PathBuf) {
-        let root = std::env::temp_dir().join(format!("flagpick-cache-{}", std::process::id()));
+        let unique = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!(
+            "flagpick-cache-{}-{unique}",
+            std::process::id()
+        ));
         let _ = fs::remove_dir_all(&root);
         (SchemaCache::new(&root), root)
     }
