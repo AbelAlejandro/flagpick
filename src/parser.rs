@@ -1,9 +1,9 @@
 use std::collections::{BTreeMap, HashMap};
 
 use crate::schema::{
-    CommandSpec, Confidence, ExecutableIdentity, HelpSource, InsertionPolicy, OptionId,
-    OptionName, OptionSpec, PositionalSpec, Repeatability, SchemaDocument, Scope, SpecMetadata,
-    ValueArity, ValueSpec, ValueType,
+    CommandSpec, Confidence, ExecutableIdentity, HelpSource, InsertionPolicy, OptionId, OptionName,
+    OptionSpec, PositionalSpec, Repeatability, SchemaDocument, Scope, SpecMetadata, ValueArity,
+    ValueSpec, ValueType,
 };
 
 pub const MAX_HELP_BYTES: usize = 1_048_576;
@@ -103,7 +103,10 @@ impl GenericHelpParser {
                 });
                 continue;
             };
-            let parsed: Vec<_> = tokens.iter().filter_map(|token| parse_name(token)).collect();
+            let parsed: Vec<_> = tokens
+                .iter()
+                .filter_map(|token| parse_name(token))
+                .collect();
             if parsed.is_empty() {
                 warnings.push(ParseWarning {
                     line: line_number,
@@ -224,10 +227,7 @@ fn is_section_heading(line: &str) -> bool {
 }
 
 fn is_heading(line: &str) -> bool {
-    !line.is_empty()
-        && !line.starts_with('-')
-        && line.ends_with(':')
-        && line.len() < 80
+    !line.is_empty() && !line.starts_with('-') && line.ends_with(':') && line.len() < 80
 }
 
 fn is_usage_line(line: &str) -> bool {
@@ -260,9 +260,8 @@ fn parse_name(token: &str) -> Option<(OptionName, String)> {
     let token = token.trim_matches(',');
     if let Some(value) = token.strip_prefix("--") {
         let (name, _) = value.split_once(['=', '[', '<']).unwrap_or((value, ""));
-        return (!name.is_empty()).then(|| {
-            (OptionName::Long(name.to_owned()), format!("--{name}"))
-        });
+        return (!name.is_empty())
+            .then(|| (OptionName::Long(name.to_owned()), format!("--{name}")));
     }
     let value = token.strip_prefix('-')?;
     if value.is_empty() {
@@ -272,7 +271,9 @@ fn parse_name(token: &str) -> Option<(OptionName, String)> {
         let character = value.chars().next()?;
         return Some((OptionName::Short(character), format!("-{character}")));
     }
-    let name = value.split_once(['=', '[', '<']).map_or(value, |(name, _)| name);
+    let name = value
+        .split_once(['=', '[', '<'])
+        .map_or(value, |(name, _)| name);
     Some((
         OptionName::SingleDashLong(name.to_owned()),
         format!("-{name}"),
@@ -355,8 +356,14 @@ mod tests {
         let report = GenericHelpParser::parse("demo", input).unwrap();
         report.document.validate().unwrap();
         assert_eq!(report.document.root.options.len(), 7);
-        assert_eq!(report.document.root.options[1].value.arity, ValueArity::Required);
-        assert_eq!(report.document.root.options[2].value.arity, ValueArity::Optional);
+        assert_eq!(
+            report.document.root.options[1].value.arity,
+            ValueArity::Required
+        );
+        assert_eq!(
+            report.document.root.options[2].value.arity,
+            ValueArity::Optional
+        );
         assert_eq!(report.document.root.options[2].value.value_type, ValueType::Enum);
         assert_eq!(
             report.document.root.options[2].value.possible_values,
@@ -364,12 +371,16 @@ mod tests {
         );
         assert_eq!(report.document.root.positionals.len(), 1);
         assert!(report.document.root.options.iter().any(|option| {
-            option.names.iter().any(|name| {
-                matches!(name, OptionName::SingleDashLong(value) if value == "version")
-            })
+            option
+                .names
+                .iter()
+                .any(|name| matches!(name, OptionName::SingleDashLong(value) if value == "version"))
         }));
         assert!(!report.document.root.options.iter().any(|option| {
-            option.names.iter().any(|name| name.spelling() == "--fabricated")
+            option
+                .names
+                .iter()
+                .any(|name| name.spelling() == "--fabricated")
         }));
         assert!(!report.warnings.is_empty());
     }
