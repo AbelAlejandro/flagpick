@@ -92,6 +92,11 @@ impl GenericHelpParser {
                         line: line_number,
                         message: "non-option line in options section skipped".into(),
                     });
+                } else if trimmed.starts_with('-') {
+                    warnings.push(ParseWarning {
+                        line: line_number,
+                        message: "option-shaped line outside options section skipped".into(),
+                    });
                 }
                 continue;
             }
