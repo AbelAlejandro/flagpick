@@ -310,6 +310,7 @@ fn parse_usage_positionals(line: &str) -> Vec<PositionalSpec> {
     };
     usage
         .split_whitespace()
+        .skip(1)
         .filter_map(|token| {
             let optional = token.starts_with('[');
             let token = token.trim_matches(['[', ']']);
