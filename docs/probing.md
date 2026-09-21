@@ -42,4 +42,4 @@ Integration tests probe only their own absolute test executable. They cover disa
 
 ## Current limits
 
-There is no public discovery CLI, PATH resolution, allow/deny configuration, help strategy, parser, sanitizer, cache, schema/TUI integration, or real Git/Docker discovery. Arbitrary Windows descendant termination is not established.
+The public `flagpick inspect <command...>` and `flagpick schema <command...> --format json` commands resolve only the explicitly selected executable and append `--help` when needed. `--no-exec-probe` skips execution and reads only an existing schema cache entry. There is no allow/deny configuration, specialized help strategy, schema/TUI integration, or real Git/Docker discovery. Arbitrary Windows descendant termination is not established.
