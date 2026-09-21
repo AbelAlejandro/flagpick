@@ -207,15 +207,30 @@ fn sanitize_help(bytes: &[u8]) -> String {
 
 pub fn resolve_executable(command: &str) -> Option<PathBuf> {
     let candidate = Path::new(command);
-    if candidate.is_absolute() {
-        return candidate.is_file().then(|| candidate.to_path_buf());
-    }
-    if command.contains(std::path::MAIN_SEPARATOR) {
-        return None;
+    if candidate.is_absolute() || command.contains(std::path::MAIN_SEPARATOR) {
+        return std::fs::canonicalize(candidate)
+            .ok()
+            .filter(|path| path.is_file());
     }
     let path = std::env::var_os("PATH")?;
     std::env::split_paths(&path).find_map(|directory| {
         let path = directory.join(command);
         path.is_file().then_some(path)
     })
+}
+
+pub fn executable_from_buffer(buffer: &str) -> Result<String, DiscoveryError> {
+    let token = buffer
+        .split_whitespace()
+        .next()
+        .ok_or(DiscoveryError::InvalidCommand)?;
+    if token.contains(|character: char| {
+        character.is_control()
+            || matches!(character, '\'' | '"' | '`' | ';' | '|' | '&' | '<' | '>')
+    }) {
+        return Err(DiscoveryError::InvalidInvocation(
+            "shell quoting and operators are not accepted for discovery".into(),
+        ));
+    }
+    Ok(token.to_owned())
 }
