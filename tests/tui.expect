@@ -14,11 +14,11 @@ proc assert_exit {expected label} {
     }
 }
 
-spawn sh -c {printf curl | ./target/debug/flagpick shell-edit zsh --cursor 4}
+spawn sh -c {printf tests/fixtures/discovery-help.sh | ./target/debug/flagpick shell-edit zsh --cursor 32}
 after 200
 send "\r"
 expect {
-    "curl --help" {}
+    "tests/fixtures/discovery-help.sh --help" {}
     timeout {
         puts stderr "confirm: edited command did not appear"
         exit 1
@@ -26,11 +26,11 @@ expect {
 }
 assert_exit 0 "confirm"
 
-spawn sh -c {printf curl | ./target/debug/flagpick shell-edit zsh --cursor 2 --at-cursor}
+spawn sh -c {printf tests/fixtures/discovery-help.sh | ./target/debug/flagpick shell-edit zsh --cursor 2 --at-cursor}
 after 200
 send "\r"
 expect {
-    "cu--helprl" {}
+    "te--helpsts/fixtures/discovery-help.sh" {}
     timeout {
         puts stderr "at-cursor: edited command did not appear"
         exit 1
@@ -38,13 +38,13 @@ expect {
 }
 assert_exit 0 "at-cursor"
 
-spawn sh -c {printf curl | ./target/debug/flagpick shell-edit zsh --cursor 4}
+spawn sh -c {printf tests/fixtures/discovery-help.sh | ./target/debug/flagpick shell-edit zsh --cursor 32}
 after 200
 send "\033\[B"
 after 20
 send "\r"
 expect {
-    "curl --verbose" {}
+    "tests/fixtures/discovery-help.sh --verbose" {}
     timeout {
         puts stderr "navigation: second option was not inserted"
         exit 1
@@ -52,12 +52,12 @@ expect {
 }
 assert_exit 0 "navigation"
 
-spawn sh -c {printf curl | ./target/debug/flagpick shell-edit zsh --cursor 4}
+spawn sh -c {printf tests/fixtures/discovery-help.sh | ./target/debug/flagpick shell-edit zsh --cursor 32}
 after 200
 send "zzzz\r"
 assert_exit 1 "empty search confirmation"
 
-spawn sh -c {printf curl | ./target/debug/flagpick shell-edit zsh --cursor 4}
+spawn sh -c {printf tests/fixtures/discovery-help.sh | ./target/debug/flagpick shell-edit zsh --cursor 32}
 after 200
 send "\033"
 assert_exit 130 "cancel"
