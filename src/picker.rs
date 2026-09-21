@@ -332,15 +332,17 @@ mod tests {
 
     #[test]
     fn discovered_schema_options_replace_the_builtin_list() {
-        let document = SchemaDocument::from_json(include_str!(
-            "../tests/fixtures/git-schema-v1.json"
-        ))
-        .expect("schema fixture parses");
+        let document =
+            SchemaDocument::from_json(include_str!("../tests/fixtures/git-schema-v1.json"))
+                .expect("schema fixture parses");
         let options = options_from_schema(&document);
         let mut picker = PickerState::with_options(&ShellBuffer::new("git"), options);
         for character in "verbose".chars() {
             picker.push_query_char(character);
         }
-        assert_eq!(picker.selected_item().map(|item| item.flag.as_ref()), Some("--verbose"));
+        assert_eq!(
+            picker.selected_item().map(|item| item.flag.as_ref()),
+            Some("--verbose")
+        );
     }
 }
