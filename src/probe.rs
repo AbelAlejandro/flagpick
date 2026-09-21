@@ -116,6 +116,9 @@ impl ProbeRunner {
             .env_clear()
             .env("TERM", "dumb")
             .env("NO_COLOR", "1")
+            // The executable request is already absolute; this fixed PATH only supports
+            // interpreter-backed fixtures and bounded helper programs inside the probe.
+            .env("PATH", "/usr/bin:/bin")
             .env("PAGER", "cat")
             .env("GIT_PAGER", "cat")
             .env("MANPAGER", "cat")

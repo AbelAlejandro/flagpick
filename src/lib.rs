@@ -1,3 +1,4 @@
+pub mod adapters;
 pub mod buffer;
 pub mod cache;
 pub mod discovery;

@@ -1,3 +1,4 @@
+use crate::adapters::{self, ProbePlan};
 use crate::cache::{CacheError, CacheKey, SchemaCache};
 use crate::parser::{GenericHelpParser, ParseWarning};
 use crate::probe::{ProbeConfig, ProbeError, ProbeRequest, ProbeRunner};
@@ -100,24 +101,35 @@ pub fn discover(
     execute_probe: bool,
 ) -> Result<DiscoveryResult, DiscoveryError> {
     let command_name = command.first().ok_or(DiscoveryError::InvalidCommand)?;
-    if command_name.is_empty()
-        || command_name.trim() != command_name
-        || command_name.chars().any(char::is_control)
-    {
+    if command.iter().any(|token| {
+        token.is_empty()
+            || token.trim() != token
+            || token.chars().any(char::is_control)
+            || token.chars().any(|character| {
+                matches!(character, '\'' | '"' | '`' | ';' | '|' | '&' | '<' | '>')
+            })
+    }) {
         return Err(DiscoveryError::InvalidInvocation(
-            "the executable must be one nonempty command token".into(),
+            "command and subcommand names must be nonempty safe tokens".into(),
         ));
     }
-    if command.len() > 1 {
+    let plan = adapters::plan(command).or_else(|| {
+        (command.len() == 1).then(|| ProbePlan {
+            argv: vec!["--help".into()],
+            parser: PARSER_VERSION,
+            source: crate::schema::HelpSource::GenericHelp,
+            confidence: crate::schema::Confidence::Medium,
+            command_path: command.to_vec(),
+        })
+    });
+    let Some(plan) = plan else {
         return Err(DiscoveryError::InvalidInvocation(
-            "additional command arguments are not executed; inspect one executable at a time"
-                .into(),
+            "unsupported command path; only registered adapters accept subcommands".into(),
         ));
-    }
+    };
     let executable = resolve_executable(command_name)
         .ok_or_else(|| DiscoveryError::UnavailableCommand(command_name.clone()))?;
-    let argv = Vec::new();
-    let key = CacheKey::from_executable(executable.clone(), argv.clone(), PARSER_VERSION)?;
+    let key = CacheKey::from_executable(executable.clone(), plan.argv.clone(), plan.parser)?;
     let cache = SchemaCache::default_location().map(SchemaCache::new);
     let cache_available = cache.is_some();
 
@@ -127,7 +139,7 @@ pub fn discover(
                 document,
                 warnings: Vec::new(),
                 executable,
-                argv: vec!["--help".into()],
+                argv: plan.argv.clone(),
                 cache: CacheState::Hit,
                 probe: None,
             });
@@ -139,7 +151,7 @@ pub fn discover(
         });
     }
 
-    let probe_argv = vec![OsString::from("--help")];
+    let probe_argv: Vec<OsString> = plan.argv.iter().cloned().map(OsString::from).collect();
     let request = ProbeRequest::new(executable.clone(), probe_argv.clone())?;
     let runner = ProbeRunner::new(ProbeConfig {
         execution_enabled: true,
@@ -156,15 +168,43 @@ pub fn discover(
             "probe output exceeded its safety bound; no schema was cached".into(),
         ));
     }
+    if plan.parser != PARSER_VERSION && output.status.code != Some(0) {
+        return Err(DiscoveryError::InvalidInvocation(format!(
+            "{} adapter probe exited with status {:?}; no schema was cached",
+            plan.parser, output.status.code
+        )));
+    }
     let bytes = if output.stdout.bytes.is_empty() {
         &output.stderr.bytes
     } else {
         &output.stdout.bytes
     };
     let help = sanitize_help(bytes);
-    let mut report = GenericHelpParser::parse(command_name, &help)
-        .map_err(|error| DiscoveryError::Parse(format!("{error:?}")))?;
+    let mut report = GenericHelpParser::parse(
+        plan.command_path
+            .last()
+            .map(String::as_str)
+            .unwrap_or(command_name),
+        &help,
+    )
+    .map_err(|error| DiscoveryError::Parse(format!("{error:?}")))?;
     report.document.root.executable.path = Some(executable.to_string_lossy().into_owned());
+    report.document.root.metadata.parser = Some(plan.parser.into());
+    report.document.root.metadata.source = plan.source;
+    report.document.root.metadata.confidence = plan.confidence;
+    if plan.command_path.len() > 1 {
+        let child = report.document.root.clone();
+        report.document.root.name = plan.command_path[0].clone();
+        report.document.root.executable.name = plan.command_path[0].clone();
+        report.document.root.options.clear();
+        report.document.root.positionals.clear();
+        report.document.root.usage.clear();
+        report.document.root.subcommands = vec![crate::schema::SubcommandSpec {
+            name: plan.command_path[1].clone(),
+            aliases: Vec::new(),
+            command: Box::new(child),
+        }];
+    }
     report
         .document
         .validate()
