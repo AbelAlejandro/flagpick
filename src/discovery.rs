@@ -110,7 +110,8 @@ pub fn discover(
     }
     if command.len() > 1 {
         return Err(DiscoveryError::InvalidInvocation(
-            "additional command arguments are not executed; inspect one executable at a time".into(),
+            "additional command arguments are not executed; inspect one executable at a time"
+                .into(),
         ));
     }
     let executable = resolve_executable(command_name)
