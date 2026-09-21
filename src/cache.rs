@@ -173,12 +173,19 @@ impl SchemaCache {
         }
         fs::create_dir_all(&self.root)?;
         let path = self.path_for(key);
-        let counter = TEMP_COUNTER.fetch_add(1, Ordering::Relaxed);
-        let temporary = self.root.join(format!(".{CACHE_FILE_PREFIX}{counter}.tmp"));
-        let mut file = OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&temporary)?;
+        let (temporary, mut file) = loop {
+            let counter = TEMP_COUNTER.fetch_add(1, Ordering::Relaxed);
+            let temporary = self.root.join(format!(".{CACHE_FILE_PREFIX}{counter}.tmp"));
+            match OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&temporary)
+            {
+                Ok(file) => break (temporary, file),
+                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+                Err(error) => return Err(error.into()),
+            }
+        };
         file.write_all(&bytes)?;
         file.sync_all()?;
         drop(file);
