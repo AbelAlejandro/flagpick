@@ -109,10 +109,7 @@ pub fn discover(
         });
     }
 
-    let mut probe_argv = command[1..]
-        .iter()
-        .map(OsString::from)
-        .collect::<Vec<_>>();
+    let mut probe_argv = command[1..].iter().map(OsString::from).collect::<Vec<_>>();
     if !probe_argv.iter().any(|argument| argument == "--help") {
         probe_argv.push(OsString::from("--help"));
     }

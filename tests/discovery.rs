@@ -4,14 +4,13 @@ use std::path::PathBuf;
 use std::process::{Command, Output};
 
 fn fixture_command(label: &str) -> PathBuf {
-    let source =
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/discovery-help.sh");
-    let target = std::env::temp_dir().join(format!(
-        "flagpick-discovery-{}-{label}",
-        std::process::id()
-    ));
+    let source = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/discovery-help.sh");
+    let target =
+        std::env::temp_dir().join(format!("flagpick-discovery-{}-{label}", std::process::id()));
     fs::copy(source, &target).expect("copy discovery fixture");
-    let mut permissions = fs::metadata(&target).expect("fixture metadata").permissions();
+    let mut permissions = fs::metadata(&target)
+        .expect("fixture metadata")
+        .permissions();
     permissions.set_mode(0o755);
     fs::set_permissions(&target, permissions).expect("make fixture executable");
     target
@@ -39,8 +38,7 @@ fn schema_emits_valid_canonical_json_for_an_explicit_executable() {
         "stderr: {}",
         String::from_utf8_lossy(&output.stderr)
     );
-    let document: serde_json::Value =
-        serde_json::from_slice(&output.stdout).expect("valid JSON");
+    let document: serde_json::Value = serde_json::from_slice(&output.stdout).expect("valid JSON");
     assert_eq!(document["schema_version"], 1);
     assert_eq!(document["root"]["metadata"]["source"], "generic_help");
     assert!(output.stderr.is_empty());
@@ -49,17 +47,29 @@ fn schema_emits_valid_canonical_json_for_an_explicit_executable() {
 #[test]
 fn inspect_exposes_probe_parser_and_cache_diagnostics() {
     let executable = fixture_command("inspect");
-    let output = run(&["inspect", executable.to_str().expect("fixture path is UTF-8")]);
+    let output = run(&[
+        "inspect",
+        executable.to_str().expect("fixture path is UTF-8"),
+    ]);
     let _ = fs::remove_file(executable);
     assert!(
         output.status.success(),
         "stderr: {}",
         String::from_utf8_lossy(&output.stderr)
     );
-    let diagnostics: serde_json::Value =
-        serde_json::from_slice(&output.stdout).expect("valid JSON");
-    for field in ["executable", "argv", "parser", "source", "confidence", "cache"] {
-        assert!(diagnostics.get(field).is_some(), "missing {field}: {diagnostics}");
+    let diagnostics: serde_json::Value = serde_json::from_slice(&output.stdout).expect("valid JSON");
+    for field in [
+        "executable",
+        "argv",
+        "parser",
+        "source",
+        "confidence",
+        "cache",
+    ] {
+        assert!(
+            diagnostics.get(field).is_some(),
+            "missing {field}: {diagnostics}"
+        );
     }
     assert_eq!(diagnostics["cache"], "miss");
 }

@@ -92,8 +92,8 @@ fn run_discovery(arguments: Vec<String>, schema_command: bool) -> Result<String,
     if schema_command && !format_json {
         return Err("schema requires --format json".into());
     }
-    let result = discovery::discover(&command, !no_exec_probe)
-        .map_err(|error| error.to_string())?;
+    let result =
+        discovery::discover(&command, !no_exec_probe).map_err(|error| error.to_string())?;
     if schema_command {
         return result
             .document
