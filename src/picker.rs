@@ -161,7 +161,7 @@ impl PickerState {
                 if self.append_needs_space {
                     format!(" {}", item.flag)
                 } else {
-                    item.flag.to_owned()
+                    item.flag.to_string()
                 },
             ),
             InsertionPoint::Cursor(cursor) => {
@@ -171,7 +171,7 @@ impl PickerState {
                         buffer_len: self.buffer_len,
                     });
                 }
-                (cursor, item.flag.to_owned())
+                (cursor, item.flag.to_string())
             }
         };
 
@@ -211,7 +211,7 @@ mod tests {
         assert_eq!(
             BUILTIN_OPTIONS
                 .iter()
-                .map(|item| item.flag)
+                .map(|item| item.flag.as_ref())
                 .collect::<Vec<_>>(),
             vec!["--help", "--verbose", "--version"]
         );
