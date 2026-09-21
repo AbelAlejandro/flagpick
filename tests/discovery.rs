@@ -85,7 +85,7 @@ fn inspect_rejects_extra_flags_instead_of_executing_them() {
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
         stderr.contains("unknown discovery argument")
-            || stderr.contains("only explicit subcommand names")
+            || stderr.contains("additional command arguments are not executed")
     );
 }
 

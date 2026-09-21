@@ -100,38 +100,33 @@ pub fn discover(
     execute_probe: bool,
 ) -> Result<DiscoveryResult, DiscoveryError> {
     let command_name = command.first().ok_or(DiscoveryError::InvalidCommand)?;
-    for argument in &command[1..] {
-        if argument.is_empty()
-            || argument.trim() != argument
-            || argument.starts_with('-')
-            || argument.contains('/')
-            || argument.contains('\\')
-            || argument.chars().any(char::is_whitespace)
-        {
-            return Err(DiscoveryError::InvalidInvocation(
-                "only explicit subcommand names may follow the executable; flags and paths are not executed"
-                    .into(),
-            ));
-        }
+    if command_name.is_empty()
+        || command_name.trim() != command_name
+        || command_name.chars().any(char::is_control)
+    {
+        return Err(DiscoveryError::InvalidInvocation(
+            "the executable must be one nonempty command token".into(),
+        ));
+    }
+    if command.len() > 1 {
+        return Err(DiscoveryError::InvalidInvocation(
+            "additional command arguments are not executed; inspect one executable at a time".into(),
+        ));
     }
     let executable = resolve_executable(command_name)
         .ok_or_else(|| DiscoveryError::UnavailableCommand(command_name.clone()))?;
-    let argv = command[1..].to_vec();
+    let argv = Vec::new();
     let key = CacheKey::from_executable(executable.clone(), argv.clone(), PARSER_VERSION)?;
     let cache = SchemaCache::default_location().map(SchemaCache::new);
     let cache_available = cache.is_some();
 
     if let Some(cache) = &cache {
         if let Some(document) = cache.get(&key)? {
-            let mut probe_argv = command[1..].to_vec();
-            if !probe_argv.iter().any(|argument| argument == "--help") {
-                probe_argv.push("--help".into());
-            }
             return Ok(DiscoveryResult {
                 document,
                 warnings: Vec::new(),
                 executable,
-                argv: probe_argv,
+                argv: vec!["--help".into()],
                 cache: CacheState::Hit,
                 probe: None,
             });
@@ -143,10 +138,7 @@ pub fn discover(
         });
     }
 
-    let mut probe_argv = command[1..].iter().map(OsString::from).collect::<Vec<_>>();
-    if !probe_argv.iter().any(|argument| argument == "--help") {
-        probe_argv.push(OsString::from("--help"));
-    }
+    let probe_argv = vec![OsString::from("--help")];
     let request = ProbeRequest::new(executable.clone(), probe_argv.clone())?;
     let runner = ProbeRunner::new(ProbeConfig {
         execution_enabled: true,

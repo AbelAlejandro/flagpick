@@ -2,7 +2,7 @@
 
 ## Scope
 
-The canonical schema is provided by the `flagpick::schema` library module and the `flagpick schema <command...> --format json` command. The command resolves only the explicitly selected executable, probes it directly with bounded settings, validates the result, and emits canonical JSON.
+The canonical schema is provided by the `flagpick::schema` library module and the `flagpick schema <command...> --format json` command. The command resolves one explicitly selected executable, probes only its help path directly with bounded settings, validates the result, and emits canonical JSON.
 
 A `SchemaDocument` contains `schema_version` and `root`, the root `CommandSpec`. The current `SCHEMA_VERSION` is `1`. Root depth is zero, a command at depth 32 is valid, and a child at depth 33 is rejected.
 
