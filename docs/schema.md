@@ -2,7 +2,7 @@
 
 ## Scope
 
-The canonical schema is provided by the `flagpick::schema` library module. There is no public CLI for it yet.
+The canonical schema is provided by the `flagpick::schema` library module and the `flagpick schema <command...> --format json` command. The command resolves one explicitly selected executable, probes only its help path directly with bounded settings, validates the result, and emits canonical JSON.
 
 A `SchemaDocument` contains `schema_version` and `root`, the root `CommandSpec`. The current `SCHEMA_VERSION` is `1`. Root depth is zero, a command at depth 32 is valid, and a child at depth 33 is rejected.
 
@@ -80,4 +80,4 @@ Producers emit the current exact schema version. Breaking field meaning or shape
 
 ## Current limits
 
-This contract defines an in-memory library model only. It does not provide a public `flagpick schema` command, executable discovery, help parsing, cache persistence, TUI integration, networking, or package distribution.
+The public command supports `--no-exec-probe` for cache-only operation. A cache miss in that mode is an actionable error; it never starts the target. The command does not invoke a shell or execute a generated command. Specialized adapters, TUI integration, networking, and package distribution remain unavailable.
