@@ -157,9 +157,8 @@ pub fn resolve_executable(command: &str) -> Option<PathBuf> {
         return None;
     }
     let path = std::env::var_os("PATH")?;
-    std::env::split_paths(&path)
-        .find_map(|directory| {
-            let path = directory.join(command);
-            path.is_file().then_some(path)
-        })
+    std::env::split_paths(&path).find_map(|directory| {
+        let path = directory.join(command);
+        path.is_file().then_some(path)
+    })
 }
