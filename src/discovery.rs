@@ -208,9 +208,7 @@ pub fn discover(
 fn sanitize_help(bytes: &[u8]) -> String {
     String::from_utf8_lossy(bytes)
         .chars()
-        .filter(|character| {
-            !character.is_control() || matches!(character, '\n' | '\r' | '\t')
-        })
+        .filter(|character| !character.is_control() || matches!(character, '\n' | '\r' | '\t'))
         .collect()
 }
 
