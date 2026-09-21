@@ -2,7 +2,7 @@
 
 set timeout 10
 set env(TERM) xterm-256color
-log_user 0
+log_user 1
 
 proc assert_exit {expected label} {
     expect eof
