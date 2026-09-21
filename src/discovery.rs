@@ -11,6 +11,7 @@ const PARSER_VERSION: &str = "generic-gnu-help-v1";
 #[derive(Debug)]
 pub enum DiscoveryError {
     InvalidCommand,
+    InvalidInvocation(String),
     UnavailableCommand(String),
     Cache(CacheError),
     Probe(ProbeError),
@@ -23,6 +24,7 @@ impl fmt::Display for DiscoveryError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::InvalidCommand => formatter.write_str("an executable command is required"),
+            Self::InvalidInvocation(message) => formatter.write_str(message),
             Self::UnavailableCommand(command) => {
                 write!(formatter, "command is unavailable: {command}")
             }
@@ -59,6 +61,19 @@ pub struct DiscoveryResult {
     pub executable: PathBuf,
     pub argv: Vec<String>,
     pub cache: CacheState,
+    pub probe: Option<ProbeDiagnostics>,
+}
+
+#[derive(Clone, Debug, serde::Serialize)]
+pub struct ProbeDiagnostics {
+    pub source: &'static str,
+    pub duration_ms: u128,
+    pub code: Option<i32>,
+    pub signal: Option<i32>,
+    pub stdout_bytes: u64,
+    pub stdout_truncated: bool,
+    pub stderr_bytes: u64,
+    pub stderr_truncated: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -85,6 +100,20 @@ pub fn discover(
     execute_probe: bool,
 ) -> Result<DiscoveryResult, DiscoveryError> {
     let command_name = command.first().ok_or(DiscoveryError::InvalidCommand)?;
+    for argument in &command[1..] {
+        if argument.is_empty()
+            || argument.trim() != argument
+            || argument.starts_with('-')
+            || argument.contains('/')
+            || argument.contains('\\')
+            || argument.chars().any(char::is_whitespace)
+        {
+            return Err(DiscoveryError::InvalidInvocation(
+                "only explicit subcommand names may follow the executable; flags and paths are not executed"
+                    .into(),
+            ));
+        }
+    }
     let executable = resolve_executable(command_name)
         .ok_or_else(|| DiscoveryError::UnavailableCommand(command_name.clone()))?;
     let argv = command[1..].to_vec();
@@ -94,12 +123,17 @@ pub fn discover(
 
     if let Some(cache) = &cache {
         if let Some(document) = cache.get(&key)? {
+            let mut probe_argv = command[1..].to_vec();
+            if !probe_argv.iter().any(|argument| argument == "--help") {
+                probe_argv.push("--help".into());
+            }
             return Ok(DiscoveryResult {
                 document,
                 warnings: Vec::new(),
                 executable,
-                argv,
+                argv: probe_argv,
                 cache: CacheState::Hit,
+                probe: None,
             });
         }
     }
@@ -119,12 +153,22 @@ pub fn discover(
         ..ProbeConfig::default()
     })?;
     let output = runner.run(&request)?;
+    if output.timed_out {
+        return Err(DiscoveryError::InvalidInvocation(
+            "probe timed out; no schema was cached".into(),
+        ));
+    }
+    if output.stdout.truncated || output.stderr.truncated {
+        return Err(DiscoveryError::InvalidInvocation(
+            "probe output exceeded its safety bound; no schema was cached".into(),
+        ));
+    }
     let bytes = if output.stdout.bytes.is_empty() {
         &output.stderr.bytes
     } else {
         &output.stdout.bytes
     };
-    let help = String::from_utf8_lossy(bytes);
+    let help = sanitize_help(bytes);
     let mut report = GenericHelpParser::parse(command_name, &help)
         .map_err(|error| DiscoveryError::Parse(format!("{error:?}")))?;
     report.document.root.executable.path = Some(executable.to_string_lossy().into_owned());
@@ -139,13 +183,35 @@ pub fn discover(
         document: report.document,
         warnings: report.warnings,
         executable,
-        argv,
+        argv: probe_argv
+            .iter()
+            .map(|argument| argument.to_string_lossy().into_owned())
+            .collect(),
         cache: if cache_available {
             CacheState::Miss
         } else {
             CacheState::Unavailable
         },
+        probe: Some(ProbeDiagnostics {
+            source: "direct",
+            duration_ms: output.duration.as_millis(),
+            code: output.status.code,
+            signal: output.status.signal,
+            stdout_bytes: output.stdout.total_bytes,
+            stdout_truncated: output.stdout.truncated,
+            stderr_bytes: output.stderr.total_bytes,
+            stderr_truncated: output.stderr.truncated,
+        }),
     })
+}
+
+fn sanitize_help(bytes: &[u8]) -> String {
+    String::from_utf8_lossy(bytes)
+        .chars()
+        .filter(|character| {
+            !character.is_control() || matches!(character, '\n' | '\r' | '\t')
+        })
+        .collect()
 }
 
 pub fn resolve_executable(command: &str) -> Option<PathBuf> {

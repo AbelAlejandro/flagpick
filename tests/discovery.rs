@@ -66,6 +66,8 @@ fn inspect_exposes_probe_parser_and_cache_diagnostics() {
         "source",
         "confidence",
         "cache",
+        "probe",
+        "sanitizer",
     ] {
         assert!(
             diagnostics.get(field).is_some(),
@@ -73,6 +75,14 @@ fn inspect_exposes_probe_parser_and_cache_diagnostics() {
         );
     }
     assert_eq!(diagnostics["cache"], "miss");
+}
+
+#[test]
+fn inspect_rejects_extra_flags_instead_of_executing_them() {
+    let output = run(&["inspect", "echo", "-n", "dangerous"]);
+    assert!(!output.status.success());
+    assert!(output.stdout.is_empty());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("only explicit subcommand names"));
 }
 
 #[test]

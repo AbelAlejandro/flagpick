@@ -112,6 +112,10 @@ fn run_discovery(arguments: Vec<String>, schema_command: bool) -> Result<String,
         "source": result.document.root.metadata.source,
         "confidence": result.document.root.metadata.confidence,
         "cache": result.cache.as_str(),
+        "probe": result
+            .probe
+            .map_or_else(|| serde_json::json!({ "source": "cache" }), |probe| serde_json::json!(probe)),
+        "sanitizer": "utf8-control-v1",
         "warnings": warnings,
         "schema": result.document,
     });
