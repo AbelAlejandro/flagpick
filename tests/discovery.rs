@@ -57,7 +57,8 @@ fn inspect_exposes_probe_parser_and_cache_diagnostics() {
         "stderr: {}",
         String::from_utf8_lossy(&output.stderr)
     );
-    let diagnostics: serde_json::Value = serde_json::from_slice(&output.stdout).expect("valid JSON");
+    let diagnostics: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("valid JSON");
     for field in [
         "executable",
         "argv",

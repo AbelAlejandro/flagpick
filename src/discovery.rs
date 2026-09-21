@@ -156,8 +156,10 @@ pub fn resolve_executable(command: &str) -> Option<PathBuf> {
     if command.contains(std::path::MAIN_SEPARATOR) {
         return None;
     }
-    std::env::var_os("PATH")?.split_paths().find_map(|directory| {
-        let path = directory.join(command);
-        path.is_file().then_some(path)
-    })
+    std::env::var_os("PATH")?
+        .split_paths()
+        .find_map(|directory| {
+            let path = directory.join(command);
+            path.is_file().then_some(path)
+        })
 }
