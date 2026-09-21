@@ -2,7 +2,7 @@
 
 set timeout 10
 set env(TERM) xterm-256color
-log_user 1
+log_user 0
 
 proc assert_exit {expected label} {
     expect eof
@@ -18,7 +18,7 @@ spawn sh -c {printf tests/fixtures/discovery-help.sh | ./target/debug/flagpick s
 after 200
 send "\r"
 expect {
-    "tests/fixtures/discovery-help.sh --help" {}
+    "tests/fixtures/discovery-help.sh -h" {}
     timeout {
         puts stderr "confirm: edited command did not appear"
         exit 1
@@ -30,7 +30,7 @@ spawn sh -c {printf tests/fixtures/discovery-help.sh | ./target/debug/flagpick s
 after 200
 send "\r"
 expect {
-    "te--helpsts/fixtures/discovery-help.sh" {}
+    "te-hsts/fixtures/discovery-help.sh" {}
     timeout {
         puts stderr "at-cursor: edited command did not appear"
         exit 1
@@ -44,7 +44,7 @@ send "\033\[B"
 after 20
 send "\r"
 expect {
-    "tests/fixtures/discovery-help.sh --verbose" {}
+    "tests/fixtures/discovery-help.sh -v" {}
     timeout {
         puts stderr "navigation: second option was not inserted"
         exit 1
