@@ -3,7 +3,7 @@ mod ui;
 use flagpick::buffer::ShellBuffer;
 use flagpick::character_cursor_to_byte;
 use flagpick::discovery;
-use flagpick::picker::{InsertionPoint, PickerOutcome};
+use flagpick::picker::{InsertionPoint, PickerOutcome, options_from_schema};
 use std::env;
 use std::error::Error;
 use std::io::{self, Read, Write};
@@ -61,7 +61,13 @@ fn run() -> Result<Option<String>, Box<dyn Error>> {
         InsertionPoint::Append
     };
     let buffer = ShellBuffer::new(input);
-    match ui::run_picker(&buffer, insertion_point)? {
+    let command = discovery::executable_from_buffer(buffer.text())?;
+    let discovery = discovery::discover(&[command], true)?;
+    let options = options_from_schema(&discovery.document);
+    if options.is_empty() {
+        return Err("discovery found no selectable options".into());
+    }
+    match ui::run_picker(&buffer, insertion_point, options)? {
         PickerOutcome::Confirm(edit) => Ok(Some(buffer.apply(&[edit])?)),
         PickerOutcome::Cancel => Ok(None),
     }

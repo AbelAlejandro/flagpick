@@ -219,3 +219,13 @@ pub fn resolve_executable(command: &str) -> Option<PathBuf> {
         path.is_file().then_some(path)
     })
 }
+
+pub fn executable_from_buffer(buffer: &str) -> Result<String, DiscoveryError> {
+    let token = buffer.split_whitespace().next().ok_or(DiscoveryError::InvalidCommand)?;
+    if token.contains(|character: char| character.is_control() || matches!(character, '\'' | '"' | '`' | ';' | '|' | '&' | '<' | '>')) {
+        return Err(DiscoveryError::InvalidInvocation(
+            "shell quoting and operators are not accepted for discovery".into(),
+        ));
+    }
+    Ok(token.to_owned())
+}

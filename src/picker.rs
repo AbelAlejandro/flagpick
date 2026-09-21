@@ -1,27 +1,53 @@
 use crate::buffer::{Edit, ShellBuffer};
+use crate::schema::{SchemaDocument, ValueArity};
+use std::borrow::Cow;
 use std::error::Error;
 use std::fmt;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct OptionItem {
-    pub flag: &'static str,
-    pub description: &'static str,
+    pub flag: Cow<'static, str>,
+    pub description: Cow<'static, str>,
 }
 
 pub const BUILTIN_OPTIONS: &[OptionItem] = &[
     OptionItem {
-        flag: "--help",
-        description: "Show help information",
+        flag: Cow::Borrowed("--help"),
+        description: Cow::Borrowed("Show help information"),
     },
     OptionItem {
-        flag: "--verbose",
-        description: "Enable verbose output",
+        flag: Cow::Borrowed("--verbose"),
+        description: Cow::Borrowed("Enable verbose output"),
     },
     OptionItem {
-        flag: "--version",
-        description: "Show version information",
+        flag: Cow::Borrowed("--version"),
+        description: Cow::Borrowed("Show version information"),
     },
 ];
+
+pub fn options_from_schema(document: &SchemaDocument) -> Vec<OptionItem> {
+    document
+        .root
+        .options
+        .iter()
+        .filter_map(|option| {
+            let name = option.names.first()?;
+            let mut flag = name.spelling();
+            if !matches!(option.value.arity, ValueArity::None) {
+                flag.push(' ');
+            }
+            Some(OptionItem {
+                flag: Cow::Owned(flag),
+                description: Cow::Owned(
+                    option
+                        .description
+                        .clone()
+                        .unwrap_or_else(|| "Discovered option".into()),
+                ),
+            })
+        })
+        .collect()
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum InsertionPoint {
@@ -56,6 +82,7 @@ impl fmt::Display for PickerError {
 impl Error for PickerError {}
 
 pub struct PickerState {
+    options: Vec<OptionItem>,
     query: String,
     filtered_indices: Vec<usize>,
     selected: Option<usize>,
@@ -65,8 +92,13 @@ pub struct PickerState {
 
 impl PickerState {
     pub fn new(buffer: &ShellBuffer) -> Self {
+        Self::with_options(buffer, BUILTIN_OPTIONS.to_vec())
+    }
+
+    pub fn with_options(buffer: &ShellBuffer, options: Vec<OptionItem>) -> Self {
         let text = buffer.text();
         let mut state = Self {
+            options,
             query: String::new(),
             filtered_indices: Vec::new(),
             selected: None,
@@ -82,19 +114,19 @@ impl PickerState {
         &self.query
     }
 
-    pub fn selected_item(&self) -> Option<&'static OptionItem> {
+    pub fn selected_item(&self) -> Option<&OptionItem> {
         self.selected
-            .map(|position| &BUILTIN_OPTIONS[self.filtered_indices[position]])
+            .map(|position| &self.options[self.filtered_indices[position]])
     }
 
     pub fn selected_position(&self) -> Option<usize> {
         self.selected
     }
 
-    pub fn filtered_items(&self) -> Vec<&'static OptionItem> {
+    pub fn filtered_items(&self) -> Vec<&OptionItem> {
         self.filtered_indices
             .iter()
-            .map(|&index| &BUILTIN_OPTIONS[index])
+            .map(|&index| &self.options[index])
             .collect()
     }
 
@@ -152,7 +184,8 @@ impl PickerState {
 
     fn refilter(&mut self) {
         let query = self.query.to_ascii_lowercase();
-        self.filtered_indices = BUILTIN_OPTIONS
+        self.filtered_indices = self
+            .options
             .iter()
             .enumerate()
             .filter_map(|(index, item)| {
@@ -295,5 +328,19 @@ mod tests {
     #[test]
     fn cancellation_returns_no_edit() {
         assert_eq!(state("curl").cancel(), PickerOutcome::Cancel);
+    }
+
+    #[test]
+    fn discovered_schema_options_replace_the_builtin_list() {
+        let document = SchemaDocument::from_json(include_str!(
+            "../tests/fixtures/git-schema-v1.json"
+        ))
+        .expect("schema fixture parses");
+        let options = options_from_schema(&document);
+        let mut picker = PickerState::with_options(&ShellBuffer::new("git"), options);
+        for character in "verbose".chars() {
+            picker.push_query_char(character);
+        }
+        assert_eq!(picker.selected_item().map(|item| item.flag.as_ref()), Some("--verbose"));
     }
 }

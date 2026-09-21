@@ -3,7 +3,7 @@ use crossterm::terminal::{
     EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode,
 };
 use flagpick::buffer::ShellBuffer;
-use flagpick::picker::{InsertionPoint, PickerError, PickerOutcome, PickerState};
+use flagpick::picker::{InsertionPoint, OptionItem, PickerError, PickerOutcome, PickerState};
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Constraint, Direction, Layout};
@@ -38,11 +38,12 @@ fn consume_string(characters: &mut std::iter::Peekable<std::str::Chars<'_>>) {
 pub fn run_picker(
     buffer: &ShellBuffer,
     insertion_point: InsertionPoint,
+    options: Vec<OptionItem>,
 ) -> Result<PickerOutcome, UiError> {
     let tty = OpenOptions::new().read(true).write(true).open("/dev/tty")?;
     let mut input = tty.try_clone()?;
     let mut terminal = TerminalSession::new(tty)?;
-    let mut state = PickerState::new(buffer);
+    let mut state = PickerState::with_options(buffer, options);
 
     loop {
         terminal.draw(&state, buffer, insertion_point)?;
