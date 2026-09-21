@@ -204,7 +204,7 @@ impl TerminalSession {
                             format!("{:<14}", item.flag),
                             Style::default().add_modifier(Modifier::BOLD),
                         ),
-                        Span::raw(item.description),
+                        Span::raw(item.description.as_ref()),
                     ]))
                 })
                 .collect::<Vec<_>>();
