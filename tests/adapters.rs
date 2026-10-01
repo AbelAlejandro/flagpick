@@ -133,6 +133,48 @@ fn ffmpeg_adapter_rejects_unsupported_full_help() {
 }
 
 #[test]
+fn docker_run_adapter_preserves_subcommand_context() {
+    let directory = fixture_dir("docker", "adapter-docker.sh");
+    let executable = directory.join("docker");
+    let executable = executable.to_str().expect("fixture path is UTF-8");
+    let output = run(&["inspect", executable, "run"], &directory);
+    let diagnostics = schema(&output);
+    assert_eq!(diagnostics["argv"], serde_json::json!(["run", "--help"]));
+    assert_eq!(diagnostics["parser"], "docker-help-v1");
+    assert_eq!(diagnostics["source"], "framework_help");
+    assert_eq!(diagnostics["confidence"], "high");
+    let child = &diagnostics["schema"]["root"]["subcommands"][0];
+    assert_eq!(child["name"], "run");
+    let options = &child["command"]["options"];
+    assert!(options.to_string().contains("detach"));
+    assert!(options.to_string().contains("name"));
+    assert!(options.to_string().contains("publish"));
+    assert!(options.to_string().contains("rm"));
+    let _ = fs::remove_dir_all(directory);
+}
+
+#[test]
+fn kubectl_get_adapter_preserves_subcommand_context() {
+    let directory = fixture_dir("kubectl", "adapter-kubectl.sh");
+    let executable = directory.join("kubectl");
+    let executable = executable.to_str().expect("fixture path is UTF-8");
+    let output = run(&["inspect", executable, "get"], &directory);
+    let diagnostics = schema(&output);
+    assert_eq!(diagnostics["argv"], serde_json::json!(["get", "--help"]));
+    assert_eq!(diagnostics["parser"], "kubectl-help-v1");
+    assert_eq!(diagnostics["source"], "framework_help");
+    assert_eq!(diagnostics["confidence"], "high");
+    let child = &diagnostics["schema"]["root"]["subcommands"][0];
+    assert_eq!(child["name"], "get");
+    let options = &child["command"]["options"];
+    assert!(options.to_string().contains("all-namespaces"));
+    assert!(options.to_string().contains("output"));
+    assert!(options.to_string().contains("show-labels"));
+    assert!(options.to_string().contains("watch"));
+    let _ = fs::remove_dir_all(directory);
+}
+
+#[test]
 fn unsupported_subcommand_is_rejected_without_probe() {
     let directory = fixture_dir("git", "adapter-git.sh");
     let output = run(&["inspect", "git", "status"], &directory);

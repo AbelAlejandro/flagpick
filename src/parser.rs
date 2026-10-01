@@ -131,7 +131,7 @@ impl GenericHelpParser {
                 });
                 continue;
             };
-            if executable == "ffmpeg" {
+            if matches!(executable.as_str(), "ffmpeg" | "docker" | "kubectl") {
                 for token in tokens.iter_mut().skip(1) {
                     if !token.starts_with(['-', '<', '[']) && !token.ends_with("...") {
                         *token = format!("<{token}>");

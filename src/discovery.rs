@@ -180,20 +180,22 @@ pub fn discover(
         &output.stdout.bytes
     };
     let help = sanitize_help(bytes);
-    let mut report = GenericHelpParser::parse(
-        plan.command_path
-            .last()
-            .map(String::as_str)
-            .unwrap_or(command_name),
-        &help,
-    )
-    .map_err(|error| DiscoveryError::Parse(format!("{error:?}")))?;
+    let parser_executable = if plan.command_path.len() > 1 {
+        plan.command_path.first().map(String::as_str)
+    } else {
+        plan.command_path.last().map(String::as_str)
+    }
+    .unwrap_or(command_name);
+    let mut report = GenericHelpParser::parse(parser_executable, &help)
+        .map_err(|error| DiscoveryError::Parse(format!("{error:?}")))?;
     report.document.root.executable.path = Some(executable.to_string_lossy().into_owned());
     report.document.root.metadata.parser = Some(plan.parser.into());
     report.document.root.metadata.source = plan.source;
     report.document.root.metadata.confidence = plan.confidence;
     if plan.command_path.len() > 1 {
-        let child = report.document.root.clone();
+        let mut child = report.document.root.clone();
+        child.name = plan.command_path[1].clone();
+        child.executable.name = plan.command_path[1].clone();
         report.document.root.name = plan.command_path[0].clone();
         report.document.root.executable.name = plan.command_path[0].clone();
         report.document.root.options.clear();
