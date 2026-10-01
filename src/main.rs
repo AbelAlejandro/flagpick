@@ -129,7 +129,9 @@ fn run_discovery(arguments: Vec<String>, schema_command: bool) -> Result<String,
 }
 
 fn parse_shell_edit_args(mut args: impl Iterator<Item = String>) -> Result<ShellEditArgs, String> {
-    if args.next().as_deref() != Some("shell-edit") || args.next().as_deref() != Some("zsh") {
+    if args.next().as_deref() != Some("shell-edit")
+        || !matches!(args.next().as_deref(), Some("zsh" | "bash"))
+    {
         return Err(usage());
     }
 
@@ -159,7 +161,7 @@ fn parse_shell_edit_args(mut args: impl Iterator<Item = String>) -> Result<Shell
 }
 
 fn usage() -> String {
-    "Usage: flagpick shell-edit zsh --cursor <character-position> [--at-cursor]\n       flagpick inspect [--no-exec-probe] <command...>\n       flagpick schema <command...> --format json".to_owned()
+    "Usage: flagpick shell-edit <zsh|bash> --cursor <character-position> [--at-cursor]\n       flagpick inspect [--no-exec-probe] <command...>\n       flagpick schema <command...> --format json".to_owned()
 }
 
 fn fail(error: impl std::fmt::Display) -> ExitCode {
@@ -191,12 +193,19 @@ mod tests {
                 at_cursor: true,
             })
         );
+        assert_eq!(
+            parse(&["shell-edit", "bash", "--cursor", "2"]),
+            Ok(ShellEditArgs {
+                cursor: 2,
+                at_cursor: false,
+            })
+        );
     }
 
     #[test]
     fn rejects_missing_or_unknown_arguments() {
         assert!(parse(&["shell-edit", "zsh"]).is_err());
-        assert!(parse(&["shell-edit", "bash", "--cursor", "0"]).is_err());
+        assert!(parse(&["shell-edit", "fish", "--cursor", "0"]).is_err());
         assert!(parse(&["shell-edit", "zsh", "--cursor", "-1"]).is_err());
         assert!(parse(&["shell-edit", "zsh", "--wat"]).is_err());
     }
