@@ -25,6 +25,8 @@
             src = self;
 
             cargoLock.lockFile = ./Cargo.lock;
+            # Adapter fixtures invoke host shell interpreters; CI runs the full test suite separately.
+            doCheck = false;
           };
         });
 
