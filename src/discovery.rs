@@ -276,3 +276,45 @@ pub fn executable_from_buffer(buffer: &str) -> Result<String, DiscoveryError> {
     }
     Ok(token.to_owned())
 }
+
+pub fn command_path_from_buffer(buffer: &str) -> Result<Vec<String>, DiscoveryError> {
+    let mut tokens = buffer.split_whitespace();
+    let executable = tokens.next().ok_or(DiscoveryError::InvalidCommand)?;
+    let mut command = vec![executable.to_owned()];
+    if let Some(subcommand) = tokens.next() {
+        let candidate = vec![command[0].clone(), subcommand.to_owned()];
+        if adapters::plan(&candidate).is_some() {
+            command.push(subcommand.to_owned());
+        }
+    }
+    if command.iter().any(|token| {
+        token.is_empty()
+            || token.trim() != token
+            || token.chars().any(char::is_control)
+            || token.chars().any(|character| {
+                matches!(character, '\'' | '"' | '`' | ';' | '|' | '&' | '<' | '>')
+            })
+    }) {
+        return Err(DiscoveryError::InvalidInvocation(
+            "command and subcommand names must be nonempty safe tokens".into(),
+        ));
+    }
+    Ok(command)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::command_path_from_buffer;
+
+    #[test]
+    fn selects_registered_subcommands_without_forwarding_arguments() {
+        assert_eq!(
+            command_path_from_buffer("git commit --message change").unwrap(),
+            vec!["git", "commit"]
+        );
+        assert_eq!(
+            command_path_from_buffer("curl https://example.com").unwrap(),
+            vec!["curl"]
+        );
+    }
+}
