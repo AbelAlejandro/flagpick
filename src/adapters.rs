@@ -29,6 +29,13 @@ pub fn plan(command: &[String]) -> Option<ProbePlan> {
             confidence: Confidence::High,
             command_path: command_path.clone(),
         }),
+        ("ffmpeg", None, 1) => Some(ProbePlan {
+            argv: vec!["-h".into(), "long".into()],
+            parser: "ffmpeg-help-v1",
+            source: HelpSource::FrameworkHelp,
+            confidence: Confidence::High,
+            command_path,
+        }),
         ("curl", None, 1) => Some(ProbePlan {
             argv: vec!["--help".into(), "all".into()],
             parser: "curl-help-v1",

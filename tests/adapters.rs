@@ -100,6 +100,39 @@ fn curl_adapter_uses_extended_help_probe() {
 }
 
 #[test]
+fn ffmpeg_adapter_uses_long_help_probe() {
+    let directory = fixture_dir("ffmpeg", "adapter-ffmpeg.sh");
+    let executable = directory.join("ffmpeg");
+    let executable = executable.to_str().expect("fixture path is UTF-8");
+    let output = run(&["inspect", executable], &directory);
+    let diagnostics = schema(&output);
+    assert_eq!(diagnostics["argv"], serde_json::json!(["-h", "long"]));
+    assert_eq!(diagnostics["parser"], "ffmpeg-help-v1");
+    assert_eq!(diagnostics["source"], "framework_help");
+    assert_eq!(diagnostics["confidence"], "high");
+    let options = &diagnostics["schema"]["root"]["options"];
+    assert!(options.to_string().contains("\"-i\""));
+    assert!(options.to_string().contains("\"-c\""));
+    assert!(options.to_string().contains("\"-crf\""));
+    assert!(options.to_string().contains("\"-y\""));
+    assert!(options.to_string().contains("input file name"));
+    assert!(options.to_string().contains("select video codec"));
+    assert!(options.to_string().contains("constant rate factor"));
+    assert!(options.to_string().contains("overwrite output files"));
+    let _ = fs::remove_dir_all(directory);
+}
+
+#[test]
+fn ffmpeg_adapter_rejects_unsupported_full_help() {
+    let directory = fixture_dir("ffmpeg", "adapter-ffmpeg.sh");
+    let output = run(&["inspect", "ffmpeg", "full"], &directory);
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("unsupported command path"));
+    let _ = fs::remove_dir_all(directory);
+}
+
+#[test]
 fn unsupported_subcommand_is_rejected_without_probe() {
     let directory = fixture_dir("git", "adapter-git.sh");
     let output = run(&["inspect", "git", "status"], &directory);
