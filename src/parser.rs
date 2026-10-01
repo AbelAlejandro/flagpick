@@ -124,13 +124,20 @@ impl GenericHelpParser {
                 continue;
             }
 
-            let Some((tokens, description)) = split_option_line(trimmed) else {
+            let Some((mut tokens, description)) = split_option_line(trimmed) else {
                 warnings.push(ParseWarning {
                     line: line_number,
                     message: "ambiguous option line skipped".into(),
                 });
                 continue;
             };
+            if matches!(executable.as_str(), "ffmpeg" | "docker" | "kubectl") {
+                for token in tokens.iter_mut().skip(1) {
+                    if !token.starts_with(['-', '<', '[']) && !token.ends_with("...") {
+                        *token = format!("<{token}>");
+                    }
+                }
+            }
             if tokens.iter().any(|token| {
                 !token.starts_with('-') && !token.starts_with(['<', '[']) && !token.ends_with("...")
             }) {
@@ -504,5 +511,18 @@ mod tests {
             GenericHelpParser::parse("demo", &"x".repeat(MAX_HELP_BYTES + 1)),
             Err(GenericHelpError::InputTooLarge { .. })
         ));
+    }
+
+    #[test]
+    fn only_ffmpeg_receives_bare_value_normalization() {
+        let input = "Options:\n  -i url  input file\n";
+        let generic = GenericHelpParser::parse("demo", input).unwrap();
+        assert!(generic.document.root.options.is_empty());
+
+        let ffmpeg = GenericHelpParser::parse("ffmpeg", input).unwrap();
+        let option = &ffmpeg.document.root.options[0];
+        assert_eq!(option.id.as_str(), "-i");
+        assert_eq!(option.value.arity, ValueArity::Required);
+        assert_eq!(option.value.name.as_deref(), Some("url"));
     }
 }

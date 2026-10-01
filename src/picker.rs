@@ -26,8 +26,29 @@ pub const BUILTIN_OPTIONS: &[OptionItem] = &[
 ];
 
 pub fn options_from_schema(document: &SchemaDocument) -> Vec<OptionItem> {
-    document
-        .root
+    let command = if document.root.options.is_empty() {
+        deepest_command(&document.root)
+    } else {
+        &document.root
+    };
+    options_from_command_spec(command)
+}
+
+pub fn options_from_command(document: &SchemaDocument, command_path: &[String]) -> Vec<OptionItem> {
+    let mut command = &document.root;
+    for name in command_path.iter().skip(1) {
+        let Some(subcommand) = command.subcommands.iter().find(|subcommand| {
+            subcommand.name == *name || subcommand.aliases.iter().any(|alias| alias == name)
+        }) else {
+            break;
+        };
+        command = &subcommand.command;
+    }
+    options_from_command_spec(command)
+}
+
+fn options_from_command_spec(command: &crate::schema::CommandSpec) -> Vec<OptionItem> {
+    command
         .options
         .iter()
         .filter_map(|option| {
@@ -47,6 +68,13 @@ pub fn options_from_schema(document: &SchemaDocument) -> Vec<OptionItem> {
             })
         })
         .collect()
+}
+
+fn deepest_command(command: &crate::schema::CommandSpec) -> &crate::schema::CommandSpec {
+    command
+        .subcommands
+        .first()
+        .map_or(command, |subcommand| deepest_command(&subcommand.command))
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -344,5 +372,14 @@ mod tests {
             picker.selected_item().map(|item| item.flag.as_ref()),
             Some("--verbose")
         );
+    }
+
+    #[test]
+    fn nested_schema_options_are_used_for_subcommands() {
+        let document =
+            SchemaDocument::from_json(include_str!("../tests/fixtures/git-schema-v1.json"))
+                .expect("schema fixture parses");
+        let options = options_from_command(&document, &["git".into(), "commit".into()]);
+        assert!(options.iter().any(|item| item.flag == "-m "));
     }
 }
