@@ -44,6 +44,21 @@ source integrations/bash/flagpick.bash
 
 Press **Ctrl-G** to invoke `_flagpick_widget` in an interactive Bash session.
 
+## Nix
+
+Run the current source directly with Nix:
+
+```sh
+nix run github:AbelAlejandro/flagpick
+```
+
+The flake exposes the default package and app for Linux and macOS on x86_64 and arm64:
+
+```sh
+nix build github:AbelAlejandro/flagpick
+nix run .
+```
+
 The wrapper preserves cancel and error buffers, preserves output-ending newlines with a sentinel, and uses no `eval`.
 
 ## Controls

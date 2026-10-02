@@ -17,15 +17,15 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Install Rust toolchain
         run: rustup show
       - name: Check formatting
         run: cargo fmt --check
       - name: Run Clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
+        run: cargo clippy --locked --all-targets --all-features -- -D warnings
       - name: Run tests
-        run: cargo test --all-targets --all-features
+        run: cargo test --locked --all-targets --all-features
       - name: Test Bash buffer integration
         run: bash tests/bash-integration.bash
       - name: Build interactive binary
@@ -42,9 +42,32 @@ jobs:
     name: Repository safety
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
       - name: Scan tracked files for secret patterns
         run: npm run secrets
+
+  nix:
+    name: Nix flake (${{ matrix.system }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            system: x86_64-linux
+          - runner: ubuntu-24.04-arm
+            system: aarch64-linux
+          - runner: macos-13
+            system: x86_64-darwin
+          - runner: macos-14
+            system: aarch64-darwin
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: DeterminateSystems/nix-installer-action@3138316df39ed29be04236d7ffc686fa525866aa # main
+      - name: Evaluate flake
+        run: nix flake check --no-build
+      - name: Build default package
+        run: nix build .#default --no-link

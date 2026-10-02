@@ -131,7 +131,6 @@ pub fn discover(
         .ok_or_else(|| DiscoveryError::UnavailableCommand(command_name.clone()))?;
     let key = CacheKey::from_executable(executable.clone(), plan.argv.clone(), plan.parser)?;
     let cache = SchemaCache::default_location().map(SchemaCache::new);
-    let cache_available = cache.is_some();
 
     if let Some(cache) = &cache {
         if let Some(document) = cache.get(&key)? {
@@ -211,9 +210,16 @@ pub fn discover(
         .document
         .validate()
         .map_err(|error| DiscoveryError::Validation(error.to_string()))?;
-    if let Some(cache) = cache {
-        cache.put(&key, &report.document)?;
-    }
+    let cache = match cache {
+        Some(cache) => match cache.put(&key, &report.document) {
+            Ok(()) => CacheState::Miss,
+            Err(CacheError::Io(error)) if error.kind() == std::io::ErrorKind::PermissionDenied => {
+                CacheState::Unavailable
+            }
+            Err(error) => return Err(error.into()),
+        },
+        None => CacheState::Unavailable,
+    };
     Ok(DiscoveryResult {
         document: report.document,
         warnings: report.warnings,
@@ -222,11 +228,7 @@ pub fn discover(
             .iter()
             .map(|argument| argument.to_string_lossy().into_owned())
             .collect(),
-        cache: if cache_available {
-            CacheState::Miss
-        } else {
-            CacheState::Unavailable
-        },
+        cache,
         probe: Some(ProbeDiagnostics {
             source: "direct",
             duration_ms: output.duration.as_millis(),
